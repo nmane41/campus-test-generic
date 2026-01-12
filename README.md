@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-# campus-test-generic
-=======
 # Online Campus Placement Test System
 
 A complete, production-ready web application for conducting online campus placement tests with role-based access control (Admin and Student).
@@ -401,4 +398,3 @@ This project is created for educational purposes.
 
 For issues or questions, please check the troubleshooting section or review the code comments.
 
->>>>>>> origin/master

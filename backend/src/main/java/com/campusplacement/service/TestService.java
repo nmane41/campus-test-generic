@@ -46,7 +46,11 @@ public class TestService {
 
         Optional<TestAttempt> existingAttempt = testAttemptRepository.findByUser(user);
         if (existingAttempt.isPresent()) {
-            return existingAttempt.get();
+            TestAttempt attempt = existingAttempt.get();
+            // If test was already started but not submitted, return existing
+            if (attempt.getEndTime() == null) {
+                return attempt;
+            }
         }
 
         TestAttempt attempt = new TestAttempt();
@@ -64,36 +68,55 @@ public class TestService {
             throw new RuntimeException("Test has already been submitted");
         }
 
+        // Validate timer - test should not exceed 50 minutes (3000 seconds)
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime startTime = attempt.getStartTime();
+        long elapsedSeconds = java.time.Duration.between(startTime, now).getSeconds();
+        if (elapsedSeconds > 3000) {
+            throw new RuntimeException("Test time limit exceeded. Test cannot be submitted after 50 minutes.");
+        }
+
         Map<Long, String> answers = request.getAnswers();
         int score = 0;
-        int totalQuestions = 0;
+        int attemptedQuestions = 0;
 
+        // Process only provided answers (questions are not mandatory)
         for (Map.Entry<Long, String> entry : answers.entrySet()) {
             Long questionId = entry.getKey();
-            String selectedOption = entry.getValue().toUpperCase();
+            String selectedOption = entry.getValue();
+            
+            // Skip if answer is empty or null
+            if (selectedOption == null || selectedOption.trim().isEmpty()) {
+                continue;
+            }
 
-            Question question = questionService.findById(questionId);
-            totalQuestions++;
+            try {
+                Question question = questionService.findById(questionId);
+                attemptedQuestions++;
 
-            Answer answer = new Answer();
-            answer.setAttempt(attempt);
-            answer.setQuestion(question);
-            answer.setSelectedOption(selectedOption);
-            answerRepository.save(answer);
+                Answer answer = new Answer();
+                answer.setAttempt(attempt);
+                answer.setQuestion(question);
+                answer.setSelectedOption(selectedOption.toUpperCase());
+                answerRepository.save(answer);
 
-            if (question.getCorrectOption().equalsIgnoreCase(selectedOption)) {
-                score++;
+                if (question.getCorrectOption().equalsIgnoreCase(selectedOption)) {
+                    score++;
+                }
+            } catch (Exception e) {
+                // Skip invalid question IDs
+                continue;
             }
         }
 
         attempt.setScore(score);
-        attempt.setEndTime(LocalDateTime.now());
+        attempt.setEndTime(now);
         testAttemptRepository.save(attempt);
 
         return new TestResultDto(
                 attempt.getId(),
                 score,
-                totalQuestions,
+                attemptedQuestions,
                 attempt.getStartTime(),
                 attempt.getEndTime()
         );
@@ -146,6 +169,10 @@ public class TestService {
                 .sum();
 
         return sum / completedAttempts.size();
+    }
+
+    public Optional<TestAttempt> getUserTestAttempt(User user) {
+        return testAttemptRepository.findByUser(user);
     }
 }
 

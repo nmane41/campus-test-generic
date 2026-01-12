@@ -44,9 +44,6 @@ const Results = () => {
         <Header />
         <div className="container">
           <div className="error">{error}</div>
-          <button className="btn btn-primary" onClick={() => navigate('/test')}>
-            Take Test
-          </button>
         </div>
       </>
     );

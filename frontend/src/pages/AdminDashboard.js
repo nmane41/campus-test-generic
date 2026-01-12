@@ -63,6 +63,67 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleDownloadPdf = async () => {
+    try {
+      const response = await api.get('/admin/results/export/pdf', {
+        responseType: 'blob'
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `test-results-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setSuccess('PDF downloaded successfully');
+    } catch (err) {
+      setError('Failed to download PDF');
+    }
+  };
+
+  const handleStartTest = async () => {
+    if (!window.confirm('Are you sure you want to start the test for all users? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      await api.post('/admin/start-test');
+      setSuccess('Test started successfully for all users');
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to start test');
+    }
+  };
+
+  const formatTimeTaken = (timeTakenSeconds) => {
+    if (!timeTakenSeconds || timeTakenSeconds < 0) {
+      return 'N/A';
+    }
+    const minutes = Math.floor(timeTakenSeconds / 60);
+    const seconds = timeTakenSeconds % 60;
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  const formatToIST = (dateTimeString) => {
+    if (!dateTimeString) return 'N/A';
+    try {
+      const date = new Date(dateTimeString);
+      // Convert to IST (UTC+5:30)
+      const istDate = new Date(date.toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
+      const options = { 
+        year: 'numeric', 
+        month: 'short', 
+        day: '2-digit', 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: true,
+        timeZone: 'Asia/Kolkata'
+      };
+      return date.toLocaleString('en-US', options);
+    } catch (e) {
+      return dateTimeString;
+    }
+  };
+
   const loadUsers = async () => {
     try {
       const response = await api.get('/admin/users');
@@ -195,22 +256,33 @@ const AdminDashboard = () => {
         {success && <div className="success">{success}</div>}
 
         {activeTab === 'dashboard' && stats && (
-          <div className="dashboard-stats">
-            <div className="stat-card">
-              <h3>Total Users</h3>
-              <p className="stat-value">{stats.totalUsers}</p>
+          <div>
+            <div className="section-header">
+              <h2>Dashboard</h2>
+              <button
+                className="btn btn-success"
+                onClick={handleStartTest}
+              >
+                Start Test
+              </button>
             </div>
-            <div className="stat-card">
-              <h3>Active Users</h3>
-              <p className="stat-value">{stats.activeUsers}</p>
-            </div>
-            <div className="stat-card">
-              <h3>Total Test Attempts</h3>
-              <p className="stat-value">{stats.totalTestAttempts}</p>
-            </div>
-            <div className="stat-card">
-              <h3>Average Score</h3>
-              <p className="stat-value">{stats.averageScore.toFixed(2)}%</p>
+            <div className="dashboard-stats">
+              <div className="stat-card">
+                <h3>Total Users</h3>
+                <p className="stat-value">{stats.totalUsers}</p>
+              </div>
+              <div className="stat-card">
+                <h3>Active Users</h3>
+                <p className="stat-value">{stats.activeUsers}</p>
+              </div>
+              <div className="stat-card">
+                <h3>Total Test Attempts</h3>
+                <p className="stat-value">{stats.totalTestAttempts}</p>
+              </div>
+              <div className="stat-card">
+                <h3>Average Score</h3>
+                <p className="stat-value">{stats.averageScore.toFixed(2)}%</p>
+              </div>
             </div>
           </div>
         )}
@@ -354,13 +426,22 @@ const AdminDashboard = () => {
 
         {activeTab === 'results' && (
           <div>
-            <h2>Student Results</h2>
+            <div className="section-header">
+              <h2>Student Results</h2>
+              <button
+                className="btn btn-primary"
+                onClick={handleDownloadPdf}
+              >
+                Download Results (PDF)
+              </button>
+            </div>
             <table className="table">
               <thead>
                 <tr>
                   <th>Username</th>
                   <th>Email</th>
                   <th>Score</th>
+                  <th>Time Taken</th>
                   <th>Start Time</th>
                   <th>End Time</th>
                 </tr>
@@ -371,8 +452,9 @@ const AdminDashboard = () => {
                     <td>{result.username}</td>
                     <td>{result.email}</td>
                     <td>{result.score}</td>
-                    <td>{new Date(result.startTime).toLocaleString()}</td>
-                    <td>{new Date(result.endTime).toLocaleString()}</td>
+                    <td>{result.timeTakenFormatted || formatTimeTaken(result.timeTakenSeconds)}</td>
+                    <td>{result.startTimeIST || formatToIST(result.startTime)}</td>
+                    <td>{result.endTimeIST || formatToIST(result.endTime)}</td>
                   </tr>
                 ))}
               </tbody>

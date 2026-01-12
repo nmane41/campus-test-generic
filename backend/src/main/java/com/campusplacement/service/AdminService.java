@@ -7,10 +7,12 @@ import com.campusplacement.entity.TestAttempt;
 import com.campusplacement.entity.User;
 import com.campusplacement.repository.TestAttemptRepository;
 import com.campusplacement.repository.UserRepository;
+import com.campusplacement.util.TimeFormatter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -51,6 +53,18 @@ public class AdminService {
                     dto.setScore(attempt.getScore());
                     dto.setStartTime(attempt.getStartTime());
                     dto.setEndTime(attempt.getEndTime());
+                    
+                    // Calculate time taken in seconds
+                    if (attempt.getStartTime() != null && attempt.getEndTime() != null) {
+                        Duration duration = Duration.between(attempt.getStartTime(), attempt.getEndTime());
+                        dto.setTimeTakenSeconds(duration.getSeconds());
+                        dto.setTimeTakenFormatted(TimeFormatter.formatTimeTaken(duration.getSeconds()));
+                    }
+                    
+                    // Format times in IST 12-hour format
+                    dto.setStartTimeIST(TimeFormatter.formatDateTimeToIST(attempt.getStartTime()));
+                    dto.setEndTimeIST(TimeFormatter.formatDateTimeToIST(attempt.getEndTime()));
+                    
                     return dto;
                 })
                 .collect(Collectors.toList());

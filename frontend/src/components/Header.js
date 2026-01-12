@@ -15,7 +15,7 @@ const Header = () => {
   return (
     <div className="header">
       <div className="header-content">
-        <h1>Placement Test System</h1>
+        <h1>Young Element Placement Test</h1>
         <div className="header-actions">
           {user && (
             <>
@@ -23,11 +23,6 @@ const Header = () => {
               {user.role === 'ADMIN' && (
                 <button className="btn btn-secondary" onClick={() => navigate('/admin')}>
                   Dashboard
-                </button>
-              )}
-              {user.role === 'USER' && (
-                <button className="btn btn-secondary" onClick={() => navigate('/test')}>
-                  Test
                 </button>
               )}
               <button className="btn btn-danger" onClick={handleLogout}>

@@ -7,6 +7,7 @@ import com.campusplacement.entity.User;
 import com.campusplacement.repository.UserRepository;
 import com.campusplacement.service.QuestionService;
 import com.campusplacement.service.TestService;
+import com.campusplacement.service.TestStatusService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -15,6 +16,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,10 +35,50 @@ public class TestController {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private TestStatusService testStatusService;
+
+    @GetMapping("/status")
+    public ResponseEntity<?> getTestStatus(Authentication authentication) {
+        try {
+            Map<String, Object> response = new HashMap<>();
+            boolean isStarted = testStatusService.isTestStarted();
+            response.put("status", isStarted ? "STARTED" : "NOT_STARTED");
+            if (isStarted) {
+                LocalDateTime startTime = testStatusService.getTestStartTime();
+                response.put("startTime", startTime);
+                
+                // Also include user's test attempt start time if available
+                try {
+                    User user = getCurrentUser(authentication);
+                    java.util.Optional<com.campusplacement.entity.TestAttempt> attempt = 
+                        testService.getUserTestAttempt(user);
+                    if (attempt.isPresent() && attempt.get().getStartTime() != null) {
+                        response.put("userStartTime", attempt.get().getStartTime());
+                    }
+                } catch (Exception e) {
+                    // User may not have started test yet
+                }
+            }
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
     @GetMapping("/questions")
     public ResponseEntity<?> getQuestions(Authentication authentication) {
         try {
             User user = getCurrentUser(authentication);
+            
+            // Check if test has been started by admin
+            if (!testStatusService.isTestStarted()) {
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "Test has not been started yet. Please wait for the administrator to start the test.");
+                return ResponseEntity.badRequest().body(error);
+            }
             
             if (testService.hasUserAttemptedTest(user)) {
                 Map<String, String> error = new HashMap<>();
@@ -44,6 +86,7 @@ public class TestController {
                 return ResponseEntity.badRequest().body(error);
             }
 
+            // Start test attempt for user (or get existing if already started)
             testService.startTest(user);
             List<QuestionDto> questions = questionService.getAllQuestionsForTest();
             

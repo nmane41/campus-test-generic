@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import Header from '../components/Header';
-import './Welcome.css';
+import WaitingScreen from '../components/waiting-screens/WaitingScreen';
 
 const Welcome = () => {
   const [testStatus, setTestStatus] = useState(null);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -37,34 +35,31 @@ const Welcome = () => {
     return (
       <>
         <Header />
-        <div className="container">
-          <div className="loading">Loading...</div>
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <div className="flex flex-col items-center gap-4">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+              <p className="text-gray-600">Loading test information...</p>
+            </div>
+          </div>
         </div>
       </>
     );
   }
 
+  const isStarted = testStatus?.status === 'STARTED';
+
+  // If test is started, redirect (this should happen automatically, but just in case)
+  if (isStarted) {
+    navigate('/test');
+    return null;
+  }
+
+  // Show premium waiting screen
   return (
     <>
       <Header />
-      <div className="container">
-        <div className="welcome-container">
-          <div className="welcome-card">
-            <h1>Welcome to the Test</h1>
-            <div className="welcome-message">
-              <p className="main-message">
-                Welcome to the Test. Please wait for the admin to start the test.
-              </p>
-            </div>
-            <div className="status-indicator">
-              <div className={`status-dot ${testStatus?.status === 'STARTED' ? 'active' : 'waiting'}`}></div>
-              <span className="status-text">
-                {testStatus?.status === 'STARTED' ? 'Test Started' : 'Waiting for test to start...'}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
+      <WaitingScreen />
     </>
   );
 };

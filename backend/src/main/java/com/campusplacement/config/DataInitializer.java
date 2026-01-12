@@ -39,7 +39,7 @@ public class DataInitializer implements CommandLineRunner {
             admin.setRole(Role.ADMIN);
             admin.setEnabled(true);
             userRepository.save(admin);
-            //System.out.println("Default admin user created: admin@placement.com / admin123");
+            System.out.println("Default admin user created: admin@placement.com / admin123");
         }
     }
 

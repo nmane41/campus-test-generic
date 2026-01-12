@@ -38,7 +38,7 @@ const Register = () => {
         {error && <div className="error">{error}</div>}
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>Username:</label>
+            <label>Name:</label>
             <input
               type="text"
               value={username}

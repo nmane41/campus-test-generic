@@ -66,11 +66,11 @@ const Login = () => {
         <p className="register-link">
           Don't have an account? <Link to="/register">Register here</Link>
         </p>
-        <div className="admin-info">
+        {/* <div className="admin-info">
           <p><strong>Admin Login:</strong></p>
           <p>Email: admin@placement.com</p>
           <p>Password: admin123</p>
-        </div>
+        </div> */}
       </div>
     </div>
   );

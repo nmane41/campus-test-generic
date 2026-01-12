@@ -10,7 +10,6 @@ const AdminDashboard = () => {
   const [questions, setQuestions] = useState([]);
   const [results, setResults] = useState([]);
   const [detailedResults, setDetailedResults] = useState([]);
-  const [resultsView, setResultsView] = useState('summary'); // 'summary' or 'detailed'
   const [expandedUsers, setExpandedUsers] = useState(new Set());
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -32,18 +31,14 @@ const AdminDashboard = () => {
       loadDashboardStats();
     } else if (activeTab === 'questions') {
       loadQuestions();
-    } else if (activeTab === 'results') {
+    } else if (activeTab === 'summary-results') {
       loadResults();
+    } else if (activeTab === 'detailed-results') {
+      loadDetailedResults();
     } else if (activeTab === 'users') {
       loadUsers();
     }
   }, [activeTab]);
-
-  useEffect(() => {
-    if (activeTab === 'results' && resultsView === 'detailed') {
-      loadDetailedResults();
-    }
-  }, [resultsView, activeTab]);
 
   const loadDashboardStats = async () => {
     try {
@@ -285,10 +280,16 @@ const AdminDashboard = () => {
             Questions
           </button>
           <button
-            className={activeTab === 'results' ? 'active' : ''}
-            onClick={() => setActiveTab('results')}
+            className={activeTab === 'summary-results' ? 'active' : ''}
+            onClick={() => setActiveTab('summary-results')}
           >
-            Results
+            Summary Results
+          </button>
+          <button
+            className={activeTab === 'detailed-results' ? 'active' : ''}
+            onClick={() => setActiveTab('detailed-results')}
+          >
+            Detailed Results
           </button>
           <button
             className={activeTab === 'users' ? 'active' : ''}
@@ -470,145 +471,123 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {activeTab === 'results' && (
+        {activeTab === 'summary-results' && (
           <div>
             <div className="section-header">
-              <h2>Student Results</h2>
-              <div>
-                <button
-                  className={`btn ${resultsView === 'summary' ? 'btn-primary' : 'btn-secondary'}`}
-                  onClick={() => {
-                    setResultsView('summary');
-                    loadResults();
-                  }}
-                  style={{ marginRight: '10px' }}
-                >
-                  Summary Results
-                </button>
-                <button
-                  className={`btn ${resultsView === 'detailed' ? 'btn-primary' : 'btn-secondary'}`}
-                  onClick={() => {
-                    setResultsView('detailed');
-                    loadDetailedResults();
-                  }}
-                  style={{ marginRight: '10px' }}
-                >
-                  Detailed Results
-                </button>
-                {resultsView === 'summary' && (
-                  <button
-                    className="btn btn-primary"
-                    onClick={handleDownloadPdf}
-                  >
-                    Download Results (PDF)
-                  </button>
-                )}
-                {resultsView === 'detailed' && (
-                  <button
-                    className="btn btn-primary"
-                    onClick={handleDownloadDetailedZip}
-                  >
-                    Download Detailed Results (ZIP)
-                  </button>
-                )}
-              </div>
+              <h2>Summary Results</h2>
+              <button
+                className="btn btn-primary"
+                onClick={handleDownloadPdf}
+              >
+                Download Results (PDF)
+              </button>
             </div>
 
-            {resultsView === 'summary' && (
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Username</th>
-                    <th>Email</th>
-                    <th>Score</th>
-                    <th>Time Taken</th>
-                    <th>Start Time</th>
-                    <th>End Time</th>
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Username</th>
+                  <th>Email</th>
+                  <th>Score</th>
+                  <th>Time Taken</th>
+                  <th>Start Time</th>
+                  <th>End Time</th>
+                </tr>
+              </thead>
+              <tbody>
+                {results.map((result) => (
+                  <tr key={result.attemptId}>
+                    <td>{result.username}</td>
+                    <td>{result.email}</td>
+                    <td>{result.score}</td>
+                    <td>{result.timeTakenFormatted || formatTimeTaken(result.timeTakenSeconds)}</td>
+                    <td>{result.startTimeIST || formatToIST(result.startTime)}</td>
+                    <td>{result.endTimeIST || formatToIST(result.endTime)}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {results.map((result) => (
-                    <tr key={result.attemptId}>
-                      <td>{result.username}</td>
-                      <td>{result.email}</td>
-                      <td>{result.score}</td>
-                      <td>{result.timeTakenFormatted || formatTimeTaken(result.timeTakenSeconds)}</td>
-                      <td>{result.startTimeIST || formatToIST(result.startTime)}</td>
-                      <td>{result.endTimeIST || formatToIST(result.endTime)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-
-            {resultsView === 'detailed' && (
-              <div className="detailed-results">
-                {detailedResults.map((result) => (
-                  <div key={result.userId} className="card detailed-result-card">
-                    <div 
-                      className="detailed-result-header"
-                      onClick={() => toggleUserExpansion(result.userId)}
-                      style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                    >
-                      <div>
-                        <strong>{result.userName}</strong> ({result.email})
-                        <span style={{ marginLeft: '20px', color: '#666' }}>
-                          Score: {result.score} | Time: {result.timeTaken}
-                        </span>
-                      </div>
-                      <span>{expandedUsers.has(result.userId) ? '▼' : '▶'}</span>
-                    </div>
-                    
-                    {expandedUsers.has(result.userId) && (
-                      <div className="detailed-result-content">
-                        <div className="result-info">
-                          <p><strong>Start Time:</strong> {result.startTimeIST} IST</p>
-                          <p><strong>End Time:</strong> {result.endTimeIST} IST</p>
-                          <p><strong>Time Taken:</strong> {result.timeTaken}</p>
-                          <p><strong>Score:</strong> {result.score}</p>
-                        </div>
-                        
-                        <table className="table detailed-answers-table">
-                          <thead>
-                            <tr>
-                              <th>Q#</th>
-                              <th>Question</th>
-                              <th>Options</th>
-                              <th>Selected</th>
-                              <th>Correct</th>
-                              <th>Status</th>
-                              <th>Time Taken</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {result.answers.map((answer, index) => (
-                              <tr key={answer.questionId}>
-                                <td>{index + 1}</td>
-                                <td>{answer.questionText}</td>
-                                <td>
-                                  <div>A. {answer.options.A}</div>
-                                  <div>B. {answer.options.B}</div>
-                                  <div>C. {answer.options.C}</div>
-                                  <div>D. {answer.options.D}</div>
-                                </td>
-                                <td>{answer.selectedOption || 'Not Answered'}</td>
-                                <td>{answer.correctOption}</td>
-                                <td>
-                                  <span className={`status-badge status-${answer.status.toLowerCase().replace('_', '-')}`}>
-                                    {answer.status.replace('_', ' ')}
-                                  </span>
-                                </td>
-                                <td>{formatTimeTaken(answer.timeTakenSeconds || 0)}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
                 ))}
-              </div>
-            )}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {activeTab === 'detailed-results' && (
+          <div>
+            <div className="section-header">
+              <h2>Detailed Results</h2>
+              <button
+                className="btn btn-primary"
+                onClick={handleDownloadDetailedZip}
+              >
+                Download Detailed Results (ZIP)
+              </button>
+            </div>
+
+            <div className="detailed-results">
+              {detailedResults.map((result) => (
+                <div key={result.userId} className="card detailed-result-card">
+                  <div 
+                    className="detailed-result-header"
+                    onClick={() => toggleUserExpansion(result.userId)}
+                    style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                  >
+                    <div>
+                      <strong>{result.userName}</strong> ({result.email})
+                      <span style={{ marginLeft: '20px', color: '#666' }}>
+                        Score: {result.score} | Time: {result.timeTaken}
+                      </span>
+                    </div>
+                    <span>{expandedUsers.has(result.userId) ? '▼' : '▶'}</span>
+                  </div>
+                  
+                  {expandedUsers.has(result.userId) && (
+                    <div className="detailed-result-content">
+                      <div className="result-info">
+                        <p><strong>Start Time:</strong> {result.startTimeIST} IST</p>
+                        <p><strong>End Time:</strong> {result.endTimeIST} IST</p>
+                        <p><strong>Time Taken:</strong> {result.timeTaken}</p>
+                        <p><strong>Score:</strong> {result.score}</p>
+                      </div>
+                      
+                      <table className="table detailed-answers-table">
+                        <thead>
+                          <tr>
+                            <th>Q#</th>
+                            <th>Question</th>
+                            <th>Options</th>
+                            <th>Selected</th>
+                            <th>Correct</th>
+                            <th>Status</th>
+                            <th>Time Taken</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {result.answers.map((answer, index) => (
+                            <tr key={answer.questionId}>
+                              <td>{index + 1}</td>
+                              <td>{answer.questionText}</td>
+                              <td>
+                                <div>A. {answer.options.A}</div>
+                                <div>B. {answer.options.B}</div>
+                                <div>C. {answer.options.C}</div>
+                                <div>D. {answer.options.D}</div>
+                              </td>
+                              <td>{answer.selectedOption || 'Not Answered'}</td>
+                              <td>{answer.correctOption}</td>
+                              <td>
+                                <span className={`status-badge status-${answer.status.toLowerCase().replace('_', '-')}`}>
+                                  {answer.status.replace('_', ' ')}
+                                </span>
+                              </td>
+                              <td>{formatTimeTaken(answer.timeTakenSeconds || 0)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

@@ -59,3 +59,56 @@
   font-size: 18px;
 }
 
+.submission-success {
+  max-width: 600px;
+  margin: 50px auto;
+  padding: 40px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  text-align: center;
+}
+
+.success-icon {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 20px;
+  background: #28a745;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+  font-weight: bold;
+}
+
+.submission-success h2 {
+  color: #28a745;
+  margin-bottom: 20px;
+  font-size: 28px;
+}
+
+.success-message {
+  font-size: 18px;
+  color: #333;
+  margin-bottom: 15px;
+  line-height: 1.6;
+}
+
+.info-message {
+  font-size: 16px;
+  color: #666;
+  margin-bottom: 30px;
+  line-height: 1.5;
+}
+
+.success-actions {
+  margin-top: 30px;
+}
+
+.success-actions .btn {
+  padding: 12px 30px;
+  font-size: 16px;
+}
+

@@ -45,7 +45,7 @@ function App() {
             <Route
               path="/results"
               element={
-                <PrivateRoute>
+                <PrivateRoute requireAdmin={true}>
                   <Results />
                 </PrivateRoute>
               }

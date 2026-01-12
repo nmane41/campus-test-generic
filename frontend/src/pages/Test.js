@@ -10,6 +10,7 @@ const Test = () => {
   const [answers, setAnswers] = useState({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -49,8 +50,10 @@ const Test = () => {
     setError('');
 
     try {
-      await api.post('/test/submit', { answers });
-      navigate('/results');
+      const response = await api.post('/test/submit', { answers });
+      setError('');
+      setSubmitted(true);
+      setSubmitting(false);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to submit test');
       setSubmitting(false);
@@ -68,14 +71,43 @@ const Test = () => {
     );
   }
 
+  if (submitted) {
+    return (
+      <>
+        <Header />
+        <div className="container">
+          <div className="submission-success">
+            <div className="success-icon">✓</div>
+            <h2>Test Submitted Successfully!</h2>
+            <p className="success-message">
+              Your test has been submitted successfully. 
+              Your results will be reviewed by the administrators.
+            </p>
+            <p className="info-message">
+              You will be notified about your results through the administrator.
+            </p>
+            <div className="success-actions">
+              <button className="btn btn-primary" onClick={() => {
+                logout();
+                navigate('/login');
+              }}>
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
   if (error && !questions.length) {
     return (
       <>
         <Header />
         <div className="container">
           <div className="error">{error}</div>
-          <button className="btn btn-primary" onClick={() => navigate('/results')}>
-            View Results
+          <button className="btn btn-primary" onClick={() => navigate('/test')}>
+            Take Test
           </button>
         </div>
       </>

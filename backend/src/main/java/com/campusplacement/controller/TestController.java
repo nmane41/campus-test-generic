@@ -65,21 +65,10 @@ public class TestController {
     public ResponseEntity<?> submitTest(@Valid @RequestBody SubmitTestRequest request, Authentication authentication) {
         try {
             User user = getCurrentUser(authentication);
-            TestResultDto result = testService.submitTest(user, request);
-            return ResponseEntity.ok(result);
-        } catch (RuntimeException e) {
-            Map<String, String> error = new HashMap<>();
-            error.put("error", e.getMessage());
-            return ResponseEntity.badRequest().body(error);
-        }
-    }
-
-    @GetMapping("/result")
-    public ResponseEntity<?> getResult(Authentication authentication) {
-        try {
-            User user = getCurrentUser(authentication);
-            TestResultDto result = testService.getTestResult(user);
-            return ResponseEntity.ok(result);
+            testService.submitTest(user, request);
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Test submitted successfully. Results will be available to administrators.");
+            return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());

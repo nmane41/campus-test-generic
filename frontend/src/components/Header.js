@@ -26,14 +26,9 @@ const Header = () => {
                 </button>
               )}
               {user.role === 'USER' && (
-                <>
-                  <button className="btn btn-secondary" onClick={() => navigate('/test')}>
-                    Test
-                  </button>
-                  <button className="btn btn-secondary" onClick={() => navigate('/results')}>
-                    Results
-                  </button>
-                </>
+                <button className="btn btn-secondary" onClick={() => navigate('/test')}>
+                  Test
+                </button>
               )}
               <button className="btn btn-danger" onClick={handleLogout}>
                 Logout

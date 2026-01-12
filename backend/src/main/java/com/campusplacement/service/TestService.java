@@ -14,9 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -77,10 +75,17 @@ public class TestService {
         }
 
         Map<Long, String> answers = request.getAnswers();
+        Map<Long, Integer> questionTimes = request.getQuestionTimes() != null 
+            ? request.getQuestionTimes() 
+            : new HashMap<>();
         int score = 0;
         int attemptedQuestions = 0;
 
-        // Process only provided answers (questions are not mandatory)
+        // Get all questions for the test (to track time for unanswered questions too)
+        List<Question> allQuestions = questionRepository.findAll();
+        Set<Long> answeredQuestionIds = new HashSet<>(answers.keySet());
+
+        // Process answered questions
         for (Map.Entry<Long, String> entry : answers.entrySet()) {
             Long questionId = entry.getKey();
             String selectedOption = entry.getValue();
@@ -98,6 +103,11 @@ public class TestService {
                 answer.setAttempt(attempt);
                 answer.setQuestion(question);
                 answer.setSelectedOption(selectedOption.toUpperCase());
+                
+                // Set time taken for this question (default to 0 if not provided)
+                Integer timeTaken = questionTimes.getOrDefault(questionId, 0);
+                answer.setTimeTakenSeconds(timeTaken);
+                
                 answerRepository.save(answer);
 
                 if (question.getCorrectOption().equalsIgnoreCase(selectedOption)) {
@@ -106,6 +116,30 @@ public class TestService {
             } catch (Exception e) {
                 // Skip invalid question IDs
                 continue;
+            }
+        }
+
+        // Process unanswered questions that have time tracked
+        for (Map.Entry<Long, Integer> timeEntry : questionTimes.entrySet()) {
+            Long questionId = timeEntry.getKey();
+            Integer timeTaken = timeEntry.getValue();
+            
+            // Only create answer record if question was viewed (time > 0) but not answered
+            if (timeTaken > 0 && !answeredQuestionIds.contains(questionId)) {
+                try {
+                    Question question = questionService.findById(questionId);
+                    
+                    Answer answer = new Answer();
+                    answer.setAttempt(attempt);
+                    answer.setQuestion(question);
+                    answer.setSelectedOption(null); // null for unanswered
+                    answer.setTimeTakenSeconds(timeTaken);
+                    
+                    answerRepository.save(answer);
+                } catch (Exception e) {
+                    // Skip invalid question IDs
+                    continue;
+                }
             }
         }
 

@@ -8,6 +8,9 @@ import './Test.css';
 const Test = () => {
   const [questions, setQuestions] = useState([]);
   const [answers, setAnswers] = useState({});
+  const [questionTimes, setQuestionTimes] = useState({}); // questionId -> time in seconds
+  const [currentQuestionId, setCurrentQuestionId] = useState(null);
+  const [questionStartTime, setQuestionStartTime] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -17,6 +20,7 @@ const Test = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const timerIntervalRef = useRef(null);
+  const questionTimerRef = useRef(null);
   const autoSubmitRef = useRef(false);
 
   useEffect(() => {
@@ -38,6 +42,38 @@ const Test = () => {
       }
     };
   }, [testStartTime, submitted, submitting]);
+
+  // Track time spent on current question
+  useEffect(() => {
+    if (currentQuestionId && !submitted && !submitting) {
+      // Start tracking time for this question
+      const startTime = Date.now();
+      setQuestionStartTime(startTime);
+      const questionIdRef = currentQuestionId; // Capture current question ID
+
+      return () => {
+        // Finalize time when leaving question
+        const finalTime = Math.floor((Date.now() - startTime) / 1000);
+        if (finalTime > 0) {
+          setQuestionTimes(prev => {
+            const baseTime = prev[questionIdRef] || 0;
+            // Accumulate time (in case user revisits question)
+            return {
+              ...prev,
+              [questionIdRef]: baseTime + finalTime
+            };
+          });
+        }
+      };
+    }
+  }, [currentQuestionId, submitted, submitting]);
+
+  // Set first question as current when questions load
+  useEffect(() => {
+    if (questions.length > 0 && !currentQuestionId) {
+      setCurrentQuestionId(questions[0].id);
+    }
+  }, [questions]);
 
   const startTimer = () => {
     if (timerIntervalRef.current) {
@@ -64,15 +100,30 @@ const Test = () => {
   const handleAutoSubmit = async () => {
     if (submitting || submitted) return;
     
+    // Finalize time for current question before submitting
+    if (currentQuestionId && questionStartTime) {
+      const finalTime = Math.floor((Date.now() - questionStartTime) / 1000);
+      setQuestionTimes(prev => ({
+        ...prev,
+        [currentQuestionId]: (prev[currentQuestionId] || 0) + finalTime
+      }));
+    }
+    
     setSubmitting(true);
     setError('');
 
     try {
-      await api.post('/test/submit', { answers });
+      await api.post('/test/submit', { 
+        answers,
+        questionTimes: questionTimes
+      });
       setSubmitted(true);
       setSubmitting(false);
       if (timerIntervalRef.current) {
         clearInterval(timerIntervalRef.current);
+      }
+      if (questionTimerRef.current) {
+        clearInterval(questionTimerRef.current);
       }
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to submit test');
@@ -127,21 +178,54 @@ const Test = () => {
     });
   };
 
+  const handleQuestionView = (questionId) => {
+    if (currentQuestionId !== questionId) {
+      // Finalize time for previous question
+      if (currentQuestionId && questionStartTime) {
+        const finalTime = Math.floor((Date.now() - questionStartTime) / 1000);
+        if (finalTime > 0) {
+          setQuestionTimes(prev => ({
+            ...prev,
+            [currentQuestionId]: (prev[currentQuestionId] || 0) + finalTime
+          }));
+        }
+      }
+      
+      // Set new current question
+      setCurrentQuestionId(questionId);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (submitting || submitted) return;
 
+    // Finalize time for current question before submitting
+    if (currentQuestionId && questionStartTime) {
+      const finalTime = Math.floor((Date.now() - questionStartTime) / 1000);
+      setQuestionTimes(prev => ({
+        ...prev,
+        [currentQuestionId]: (prev[currentQuestionId] || 0) + finalTime
+      }));
+    }
+
     setSubmitting(true);
     setError('');
 
     try {
-      await api.post('/test/submit', { answers });
+      await api.post('/test/submit', { 
+        answers,
+        questionTimes: questionTimes
+      });
       setError('');
       setSubmitted(true);
       setSubmitting(false);
       if (timerIntervalRef.current) {
         clearInterval(timerIntervalRef.current);
+      }
+      if (questionTimerRef.current) {
+        clearInterval(questionTimerRef.current);
       }
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to submit test');
@@ -231,7 +315,12 @@ const Test = () => {
         
         <form onSubmit={handleSubmit}>
           {questions.map((question, index) => (
-            <div key={question.id} className="question-card">
+            <div 
+              key={question.id} 
+              className="question-card"
+              onMouseEnter={() => handleQuestionView(question.id)}
+              onClick={() => handleQuestionView(question.id)}
+            >
               <h3>Question {index + 1}</h3>
               <p className="question-text">{question.questionText}</p>
               <div className="options">

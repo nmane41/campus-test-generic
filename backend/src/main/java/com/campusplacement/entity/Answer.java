@@ -17,8 +17,11 @@ public class Answer {
     @JoinColumn(name = "question_id", nullable = false)
     private Question question;
 
-    @Column(name = "selected_option", nullable = false, length = 1)
-    private String selectedOption; // A, B, C, or D
+    @Column(name = "selected_option", length = 1)
+    private String selectedOption; // A, B, C, or D (nullable for unanswered but viewed questions)
+
+    @Column(name = "time_taken_seconds")
+    private Integer timeTakenSeconds; // Time spent on this question in seconds
 
     // Constructors
     public Answer() {
@@ -61,6 +64,14 @@ public class Answer {
 
     public void setSelectedOption(String selectedOption) {
         this.selectedOption = selectedOption;
+    }
+
+    public Integer getTimeTakenSeconds() {
+        return timeTakenSeconds;
+    }
+
+    public void setTimeTakenSeconds(Integer timeTakenSeconds) {
+        this.timeTakenSeconds = timeTakenSeconds;
     }
 }
 

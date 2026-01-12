@@ -4,6 +4,7 @@ import com.campusplacement.dto.*;
 import com.campusplacement.entity.User;
 import com.campusplacement.repository.UserRepository;
 import com.campusplacement.service.AdminService;
+import com.campusplacement.service.DetailedPdfExportService;
 import com.campusplacement.service.PdfExportService;
 import com.campusplacement.service.QuestionService;
 import com.campusplacement.service.TestStatusService;
@@ -41,6 +42,9 @@ public class AdminController {
 
     @Autowired
     private PdfExportService pdfExportService;
+
+    @Autowired
+    private DetailedPdfExportService detailedPdfExportService;
 
     @Autowired
     private TestStatusService testStatusService;
@@ -178,6 +182,32 @@ public class AdminController {
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    @GetMapping("/results/detailed")
+    public ResponseEntity<List<DetailedResultDto>> getDetailedResults() {
+        List<DetailedResultDto> results = adminService.getAllDetailedResults();
+        return ResponseEntity.ok(results);
+    }
+
+    @GetMapping("/results/detailed/export/zip")
+    public ResponseEntity<byte[]> exportDetailedResultsAsZip() {
+        try {
+            byte[] zipBytes = detailedPdfExportService.generateDetailedResultsZip();
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+            headers.setContentDispositionFormData("attachment", "detailed-results-" + 
+                java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm-ss")) + ".zip");
+            
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(zipBytes);
+        } catch (Exception e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Failed to generate ZIP: " + e.getMessage());
+            return ResponseEntity.internalServerError().build();
         }
     }
 }

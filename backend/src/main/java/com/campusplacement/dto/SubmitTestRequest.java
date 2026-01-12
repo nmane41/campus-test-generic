@@ -10,6 +10,8 @@ public class SubmitTestRequest {
     @Valid
     private Map<Long, String> answers; // questionId -> selectedOption
 
+    private Map<Long, Integer> questionTimes; // questionId -> timeTakenSeconds
+
     public SubmitTestRequest() {
     }
 
@@ -19,6 +21,14 @@ public class SubmitTestRequest {
 
     public void setAnswers(Map<Long, String> answers) {
         this.answers = answers;
+    }
+
+    public Map<Long, Integer> getQuestionTimes() {
+        return questionTimes;
+    }
+
+    public void setQuestionTimes(Map<Long, Integer> questionTimes) {
+        this.questionTimes = questionTimes;
     }
 }
 

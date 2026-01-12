@@ -105,3 +105,85 @@
   margin-top: 20px;
 }
 
+.detailed-results {
+  margin-top: 20px;
+}
+
+.detailed-result-card {
+  margin-bottom: 20px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.detailed-result-header {
+  padding: 15px 20px;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #ddd;
+  transition: background-color 0.2s;
+}
+
+.detailed-result-header:hover {
+  background-color: #e9ecef;
+}
+
+.detailed-result-content {
+  padding: 20px;
+}
+
+.result-info {
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+}
+
+.result-info p {
+  margin: 8px 0;
+  font-size: 14px;
+}
+
+.detailed-answers-table {
+  margin-top: 20px;
+  font-size: 13px;
+}
+
+.detailed-answers-table th {
+  background-color: #007bff;
+  color: white;
+  padding: 10px;
+  text-align: left;
+}
+
+.detailed-answers-table td {
+  padding: 10px;
+  border-bottom: 1px solid #ddd;
+  vertical-align: top;
+}
+
+.detailed-answers-table tr:hover {
+  background-color: #f8f9fa;
+}
+
+.status-badge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: bold;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.status-correct {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.status-wrong {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.status-not-answered {
+  background-color: #fff3cd;
+  color: #856404;
+}

@@ -1,7 +1,6 @@
-target
-.git
+target/
+.git/
 .gitignore
-*.log
-.DS_Store
-.idea
 *.iml
+.idea/
+*.log

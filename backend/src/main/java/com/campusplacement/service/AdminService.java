@@ -116,19 +116,17 @@ public class AdminService {
             dto.setEndTimeIST(TimeFormatter.formatDateTimeToIST(attempt.getEndTime()));
         }
 
-        // Get all questions (to find unanswered ones)
-        List<Question> allQuestions = questionRepository.findAll();
-        Map<Long, Question> questionMap = allQuestions.stream()
-                .collect(Collectors.toMap(Question::getId, q -> q));
-
-        // Get user's answers
+        // Get user's answers - these represent ONLY the questions that were part of the test attempt
         List<Answer> userAnswers = answerRepository.findByAttempt(attempt);
-        Map<Long, Answer> answerMap = userAnswers.stream()
-                .collect(Collectors.toMap(a -> a.getQuestion().getId(), a -> a));
+        
+        // Sort answers by question ID to maintain consistent order
+        userAnswers.sort(Comparator.comparing(a -> a.getQuestion().getId()));
 
-        // Build detailed answers list
+        // Build detailed answers list - ONLY for questions that were part of the test attempt
         List<DetailedAnswerDto> detailedAnswers = new ArrayList<>();
-        for (Question question : allQuestions) {
+        for (Answer userAnswer : userAnswers) {
+            Question question = userAnswer.getQuestion();
+            
             DetailedAnswerDto answerDto = new DetailedAnswerDto();
             answerDto.setQuestionId(question.getId());
             answerDto.setQuestionText(question.getQuestionText());
@@ -143,34 +141,27 @@ public class AdminService {
             
             answerDto.setCorrectOption(question.getCorrectOption());
             
-            // Check if user answered or viewed this question
-            Answer userAnswer = answerMap.get(question.getId());
-            if (userAnswer != null) {
-                String selectedOption = userAnswer.getSelectedOption();
-                answerDto.setSelectedOption(selectedOption != null && !selectedOption.isEmpty() 
-                    ? selectedOption 
-                    : null);
-                
-                // Determine status
-                if (selectedOption != null && !selectedOption.isEmpty()) {
-                    if (question.getCorrectOption().equalsIgnoreCase(selectedOption)) {
-                        answerDto.setStatus("CORRECT");
-                    } else {
-                        answerDto.setStatus("WRONG");
-                    }
+            // Get selected option from answer record
+            String selectedOption = userAnswer.getSelectedOption();
+            answerDto.setSelectedOption(selectedOption != null && !selectedOption.isEmpty() 
+                ? selectedOption 
+                : null);
+            
+            // Determine status
+            if (selectedOption != null && !selectedOption.isEmpty()) {
+                if (question.getCorrectOption().equalsIgnoreCase(selectedOption)) {
+                    answerDto.setStatus("CORRECT");
                 } else {
-                    answerDto.setStatus("NOT_ANSWERED");
+                    answerDto.setStatus("WRONG");
                 }
-                
-                // Set time taken (from answer record)
-                answerDto.setTimeTakenSeconds(userAnswer.getTimeTakenSeconds() != null 
-                    ? userAnswer.getTimeTakenSeconds() 
-                    : 0);
             } else {
-                answerDto.setSelectedOption(null);
                 answerDto.setStatus("NOT_ANSWERED");
-                answerDto.setTimeTakenSeconds(0); // No time spent if not viewed
             }
+            
+            // Set time taken (from answer record)
+            answerDto.setTimeTakenSeconds(userAnswer.getTimeTakenSeconds() != null 
+                ? userAnswer.getTimeTakenSeconds() 
+                : 0);
             
             detailedAnswers.add(answerDto);
         }

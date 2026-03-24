@@ -1,8 +1,7 @@
 node_modules/
 build/
-.git
+.git/
 .gitignore
-*.md
-.idea
-.vscode
-
+*.log
+.env
+.env.local

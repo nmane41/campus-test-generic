@@ -14,9 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -46,7 +44,11 @@ public class TestService {
 
         Optional<TestAttempt> existingAttempt = testAttemptRepository.findByUser(user);
         if (existingAttempt.isPresent()) {
-            return existingAttempt.get();
+            TestAttempt attempt = existingAttempt.get();
+            // If test was already started but not submitted, return existing
+            if (attempt.getEndTime() == null) {
+                return attempt;
+            }
         }
 
         TestAttempt attempt = new TestAttempt();
@@ -64,36 +66,91 @@ public class TestService {
             throw new RuntimeException("Test has already been submitted");
         }
 
-        Map<Long, String> answers = request.getAnswers();
-        int score = 0;
-        int totalQuestions = 0;
+        // Validate timer - test should not exceed 50 minutes (3000 seconds)
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime startTime = attempt.getStartTime();
+        long elapsedSeconds = java.time.Duration.between(startTime, now).getSeconds();
+        if (elapsedSeconds > 3000) {
+            throw new RuntimeException("Test time limit exceeded. Test cannot be submitted after 50 minutes.");
+        }
 
+        Map<Long, String> answers = request.getAnswers();
+        Map<Long, Integer> questionTimes = request.getQuestionTimes() != null 
+            ? request.getQuestionTimes() 
+            : new HashMap<>();
+        int score = 0;
+        int attemptedQuestions = 0;
+
+        // Get all questions for the test (to track time for unanswered questions too)
+        List<Question> allQuestions = questionRepository.findAll();
+        Set<Long> answeredQuestionIds = new HashSet<>(answers.keySet());
+
+        // Process answered questions
         for (Map.Entry<Long, String> entry : answers.entrySet()) {
             Long questionId = entry.getKey();
-            String selectedOption = entry.getValue().toUpperCase();
+            String selectedOption = entry.getValue();
+            
+            // Skip if answer is empty or null
+            if (selectedOption == null || selectedOption.trim().isEmpty()) {
+                continue;
+            }
 
-            Question question = questionService.findById(questionId);
-            totalQuestions++;
+            try {
+                Question question = questionService.findById(questionId);
+                attemptedQuestions++;
 
-            Answer answer = new Answer();
-            answer.setAttempt(attempt);
-            answer.setQuestion(question);
-            answer.setSelectedOption(selectedOption);
-            answerRepository.save(answer);
+                Answer answer = new Answer();
+                answer.setAttempt(attempt);
+                answer.setQuestion(question);
+                answer.setSelectedOption(selectedOption.toUpperCase());
+                
+                // Set time taken for this question (default to 0 if not provided)
+                Integer timeTaken = questionTimes.getOrDefault(questionId, 0);
+                answer.setTimeTakenSeconds(timeTaken);
+                
+                answerRepository.save(answer);
 
-            if (question.getCorrectOption().equalsIgnoreCase(selectedOption)) {
-                score++;
+                if (question.getCorrectOption().equalsIgnoreCase(selectedOption)) {
+                    score++;
+                }
+            } catch (Exception e) {
+                // Skip invalid question IDs
+                continue;
+            }
+        }
+
+        // Process unanswered questions that have time tracked
+        for (Map.Entry<Long, Integer> timeEntry : questionTimes.entrySet()) {
+            Long questionId = timeEntry.getKey();
+            Integer timeTaken = timeEntry.getValue();
+            
+            // Only create answer record if question was viewed (time > 0) but not answered
+            if (timeTaken > 0 && !answeredQuestionIds.contains(questionId)) {
+                try {
+                    Question question = questionService.findById(questionId);
+                    
+                    Answer answer = new Answer();
+                    answer.setAttempt(attempt);
+                    answer.setQuestion(question);
+                    answer.setSelectedOption(null); // null for unanswered
+                    answer.setTimeTakenSeconds(timeTaken);
+                    
+                    answerRepository.save(answer);
+                } catch (Exception e) {
+                    // Skip invalid question IDs
+                    continue;
+                }
             }
         }
 
         attempt.setScore(score);
-        attempt.setEndTime(LocalDateTime.now());
+        attempt.setEndTime(now);
         testAttemptRepository.save(attempt);
 
         return new TestResultDto(
                 attempt.getId(),
                 score,
-                totalQuestions,
+                attemptedQuestions,
                 attempt.getStartTime(),
                 attempt.getEndTime()
         );
@@ -146,6 +203,10 @@ public class TestService {
                 .sum();
 
         return sum / completedAttempts.size();
+    }
+
+    public Optional<TestAttempt> getUserTestAttempt(User user) {
+        return testAttemptRepository.findByUser(user);
     }
 }
 

@@ -4,9 +4,14 @@ import com.campusplacement.dto.*;
 import com.campusplacement.entity.User;
 import com.campusplacement.repository.UserRepository;
 import com.campusplacement.service.AdminService;
+import com.campusplacement.service.DetailedPdfExportService;
+import com.campusplacement.service.PdfExportService;
 import com.campusplacement.service.QuestionService;
+import com.campusplacement.service.TestStatusService;
 import com.campusplacement.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -34,6 +39,15 @@ public class AdminController {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private PdfExportService pdfExportService;
+
+    @Autowired
+    private DetailedPdfExportService detailedPdfExportService;
+
+    @Autowired
+    private TestStatusService testStatusService;
 
     @GetMapping("/dashboard")
     public ResponseEntity<DashboardStatsDto> getDashboardStats() {
@@ -135,6 +149,66 @@ public class AdminController {
     public ResponseEntity<List<User>> getAllUsers() {
         List<User> users = userRepository.findAll();
         return ResponseEntity.ok(users);
+    }
+
+    @GetMapping("/results/export/pdf")
+    public ResponseEntity<byte[]> exportResultsAsPdf() {
+        try {
+            byte[] pdfBytes = pdfExportService.generateResultsPdf();
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDispositionFormData("attachment", "test-results-" + 
+                java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm-ss")) + ".pdf");
+            
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(pdfBytes);
+        } catch (Exception e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Failed to generate PDF: " + e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @PostMapping("/start-test")
+    public ResponseEntity<?> startTest() {
+        try {
+            testStatusService.startTest();
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Test started successfully");
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    @GetMapping("/results/detailed")
+    public ResponseEntity<List<DetailedResultDto>> getDetailedResults() {
+        List<DetailedResultDto> results = adminService.getAllDetailedResults();
+        return ResponseEntity.ok(results);
+    }
+
+    @GetMapping("/results/detailed/export/zip")
+    public ResponseEntity<byte[]> exportDetailedResultsAsZip() {
+        try {
+            byte[] zipBytes = detailedPdfExportService.generateDetailedResultsZip();
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+            headers.setContentDispositionFormData("attachment", "detailed-results-" + 
+                java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm-ss")) + ".zip");
+            
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(zipBytes);
+        } catch (Exception e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Failed to generate ZIP: " + e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
     }
 }
 

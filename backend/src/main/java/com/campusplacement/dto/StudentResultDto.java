@@ -10,6 +10,10 @@ public class StudentResultDto {
     private Integer score;
     private LocalDateTime startTime;
     private LocalDateTime endTime;
+    private Long timeTakenSeconds; // Duration in seconds
+    private String startTimeIST; // Formatted in IST 12-hour format
+    private String endTimeIST; // Formatted in IST 12-hour format
+    private String timeTakenFormatted; // Formatted as mm:ss
 
     public StudentResultDto() {
     }
@@ -68,6 +72,38 @@ public class StudentResultDto {
 
     public void setEndTime(LocalDateTime endTime) {
         this.endTime = endTime;
+    }
+
+    public Long getTimeTakenSeconds() {
+        return timeTakenSeconds;
+    }
+
+    public void setTimeTakenSeconds(Long timeTakenSeconds) {
+        this.timeTakenSeconds = timeTakenSeconds;
+    }
+
+    public String getStartTimeIST() {
+        return startTimeIST;
+    }
+
+    public void setStartTimeIST(String startTimeIST) {
+        this.startTimeIST = startTimeIST;
+    }
+
+    public String getEndTimeIST() {
+        return endTimeIST;
+    }
+
+    public void setEndTimeIST(String endTimeIST) {
+        this.endTimeIST = endTimeIST;
+    }
+
+    public String getTimeTakenFormatted() {
+        return timeTakenFormatted;
+    }
+
+    public void setTimeTakenFormatted(String timeTakenFormatted) {
+        this.timeTakenFormatted = timeTakenFormatted;
     }
 }
 

@@ -1,17 +1,25 @@
 package com.campusplacement.service;
 
 import com.campusplacement.dto.DashboardStatsDto;
+import com.campusplacement.dto.DetailedAnswerDto;
+import com.campusplacement.dto.DetailedResultDto;
 import com.campusplacement.dto.PasswordResetResponse;
 import com.campusplacement.dto.StudentResultDto;
+import com.campusplacement.entity.Answer;
+import com.campusplacement.entity.Question;
 import com.campusplacement.entity.TestAttempt;
 import com.campusplacement.entity.User;
+import com.campusplacement.repository.AnswerRepository;
+import com.campusplacement.repository.QuestionRepository;
 import com.campusplacement.repository.TestAttemptRepository;
 import com.campusplacement.repository.UserRepository;
+import com.campusplacement.util.TimeFormatter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import java.time.Duration;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -28,6 +36,12 @@ public class AdminService {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private AnswerRepository answerRepository;
+
+    @Autowired
+    private QuestionRepository questionRepository;
 
     public DashboardStatsDto getDashboardStats() {
         long totalUsers = userRepository.count();
@@ -51,6 +65,18 @@ public class AdminService {
                     dto.setScore(attempt.getScore());
                     dto.setStartTime(attempt.getStartTime());
                     dto.setEndTime(attempt.getEndTime());
+                    
+                    // Calculate time taken in seconds
+                    if (attempt.getStartTime() != null && attempt.getEndTime() != null) {
+                        Duration duration = Duration.between(attempt.getStartTime(), attempt.getEndTime());
+                        dto.setTimeTakenSeconds(duration.getSeconds());
+                        dto.setTimeTakenFormatted(TimeFormatter.formatTimeTaken(duration.getSeconds()));
+                    }
+                    
+                    // Format times in IST 12-hour format
+                    dto.setStartTimeIST(TimeFormatter.formatDateTimeToIST(attempt.getStartTime()));
+                    dto.setEndTimeIST(TimeFormatter.formatDateTimeToIST(attempt.getEndTime()));
+                    
                     return dto;
                 })
                 .collect(Collectors.toList());
@@ -64,6 +90,84 @@ public class AdminService {
         userService.resetPassword(userId, temporaryPassword);
 
         return new PasswordResetResponse(temporaryPassword, "Password reset successfully");
+    }
+
+    public List<DetailedResultDto> getAllDetailedResults() {
+        List<TestAttempt> attempts = testAttemptRepository.findAllByOrderByEndTimeDesc();
+        return attempts.stream()
+                .filter(attempt -> attempt.getEndTime() != null)
+                .map(this::convertToDetailedResult)
+                .collect(Collectors.toList());
+    }
+
+    private DetailedResultDto convertToDetailedResult(TestAttempt attempt) {
+        User user = attempt.getUser();
+        DetailedResultDto dto = new DetailedResultDto();
+        dto.setUserId(user.getId());
+        dto.setUserName(user.getUsername());
+        dto.setEmail(user.getEmail());
+        dto.setScore(attempt.getScore());
+
+        // Calculate time taken
+        if (attempt.getStartTime() != null && attempt.getEndTime() != null) {
+            Duration duration = Duration.between(attempt.getStartTime(), attempt.getEndTime());
+            dto.setTimeTaken(TimeFormatter.formatTimeTaken(duration.getSeconds()));
+            dto.setStartTimeIST(TimeFormatter.formatDateTimeToIST(attempt.getStartTime()));
+            dto.setEndTimeIST(TimeFormatter.formatDateTimeToIST(attempt.getEndTime()));
+        }
+
+        // Get user's answers - these represent ONLY the questions that were part of the test attempt
+        List<Answer> userAnswers = answerRepository.findByAttempt(attempt);
+        
+        // Sort answers by question ID to maintain consistent order
+        userAnswers.sort(Comparator.comparing(a -> a.getQuestion().getId()));
+
+        // Build detailed answers list - ONLY for questions that were part of the test attempt
+        List<DetailedAnswerDto> detailedAnswers = new ArrayList<>();
+        for (Answer userAnswer : userAnswers) {
+            Question question = userAnswer.getQuestion();
+            
+            DetailedAnswerDto answerDto = new DetailedAnswerDto();
+            answerDto.setQuestionId(question.getId());
+            answerDto.setQuestionText(question.getQuestionText());
+            
+            // Set options
+            Map<String, String> options = new HashMap<>();
+            options.put("A", question.getOptionA());
+            options.put("B", question.getOptionB());
+            options.put("C", question.getOptionC());
+            options.put("D", question.getOptionD());
+            answerDto.setOptions(options);
+            
+            answerDto.setCorrectOption(question.getCorrectOption());
+            
+            // Get selected option from answer record
+            String selectedOption = userAnswer.getSelectedOption();
+            answerDto.setSelectedOption(selectedOption != null && !selectedOption.isEmpty() 
+                ? selectedOption 
+                : null);
+            
+            // Determine status
+            if (selectedOption != null && !selectedOption.isEmpty()) {
+                if (question.getCorrectOption().equalsIgnoreCase(selectedOption)) {
+                    answerDto.setStatus("CORRECT");
+                } else {
+                    answerDto.setStatus("WRONG");
+                }
+            } else {
+                answerDto.setStatus("NOT_ANSWERED");
+            }
+            
+            // Set time taken (from answer record)
+            answerDto.setTimeTakenSeconds(userAnswer.getTimeTakenSeconds() != null 
+                ? userAnswer.getTimeTakenSeconds() 
+                : 0);
+            
+            detailedAnswers.add(answerDto);
+        }
+
+        dto.setAnswers(detailedAnswers);
+        return dto;
     }
 
     private String generateTemporaryPassword() {
